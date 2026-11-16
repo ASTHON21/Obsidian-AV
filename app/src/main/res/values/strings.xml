@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Obsidian AV</string>
+    <string name="brand_title">OBSIDIAN AV</string>
+    <string name="brand_badge">CORE v2.4 LOSSLESS</string>
+    <string name="nav_hub">工作台</string>
+    <string name="nav_extract">转音频</string>
+    <string name="nav_audio">音频编辑</string>
+    <string name="nav_video">视频剪辑</string>
+    <string name="cd_logo">Precision AV Logo</string>
+    <string name="cd_settings">引擎全局设置</string>
+    <string name="cd_play_pause">播放或暂停</string>
+    <string name="cd_prev_frame">后退一帧</string>
+    <string name="cd_next_frame">前进一帧</string>
+    <string name="cd_rewind_5s">快退5秒</string>
+    <string name="cd_forward_5s">快进5秒</string>
+    <string name="cd_grid_toggle">参考线切换</string>
+    <string name="cd_fullscreen">全屏视口</string>
+    <string name="cd_share">分享文件</string>
+    <string name="cd_album_art">专辑封面</string>
+</resources>

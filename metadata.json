@@ -1,0 +1,6 @@
+{
+  "name": "Obsidian AV",
+  "description": "Precision lossless audio-video studio for track extraction, waveform trimming, ID3 tagging, and keyframe video cutting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
