@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Album
@@ -32,16 +33,21 @@ import androidx.compose.material.icons.rounded.Audiotrack
 import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.DataUsage
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Equalizer
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FolderOpen
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material.icons.rounded.Sell
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VideoLibrary
@@ -57,7 +63,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -120,6 +128,9 @@ fun ExtractScreen(
     onSelectMethod: (ExtractMethod) -> Unit,
     onAdjustFadeIn: (Float) -> Unit,
     onAdjustFadeOut: (Float) -> Unit,
+    onUpdateCustomFileName: (String) -> Unit,
+    onUpdateCustomArtist: (String) -> Unit,
+    onUpdateCustomTitle: (String) -> Unit,
     onRunExtraction: () -> Unit,
     onOpenInAudioEditor: () -> Unit,
     modifier: Modifier = Modifier
@@ -177,7 +188,17 @@ fun ExtractScreen(
                 )
             }
 
-            // 5. Advanced Extraction Settings (Collapsible)
+            // 5. Custom Output Filename & Artist/Author/Title Card
+            item {
+                ExtractNamingAndMetadataCard(
+                    uiState = uiState,
+                    onUpdateCustomFileName = onUpdateCustomFileName,
+                    onUpdateCustomArtist = onUpdateCustomArtist,
+                    onUpdateCustomTitle = onUpdateCustomTitle
+                )
+            }
+
+            // 6. Advanced Extraction Settings (Collapsible)
             item {
                 AdvancedExtractionSettingsCard(
                     uiState = uiState,
@@ -188,7 +209,7 @@ fun ExtractScreen(
                 )
             }
 
-            // 6. Primary Action CTA Button Dock
+            // 7. Primary Action CTA Button Dock
             item {
                 ExtractPrimaryCtaDock(
                     uiState = uiState,
@@ -1138,6 +1159,165 @@ private fun FadeStepperCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.Add, contentDescription = "增加", tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExtractNamingAndMetadataCard(
+    uiState: ExtractUiState,
+    onUpdateCustomFileName: (String) -> Unit,
+    onUpdateCustomArtist: (String) -> Unit,
+    onUpdateCustomTitle: (String) -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = ObsidianSurfaceContainerLow,
+        shape = RoundedCornerShape(12.dp),
+        shadowElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Sell,
+                        contentDescription = null,
+                        tint = ObsidianPrimary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text("输出命名与作者信息", style = StudioTextStyles.HeadlineSm, color = ObsidianOnSurface)
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(ObsidianSurfaceContainerHigh)
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = ".${uiState.selectedFormat.extension}",
+                        style = StudioTextStyles.LabelSm.copy(fontWeight = FontWeight.Bold),
+                        color = ObsidianPrimary
+                    )
+                }
+            }
+
+            ExtractInputRow(
+                label = "自定义文件名",
+                value = uiState.customFileName,
+                placeholder = "留空则按视频原名自动生成",
+                icon = Icons.Rounded.Edit,
+                suffixText = ".${uiState.selectedFormat.extension}",
+                testTag = "extract_custom_filename_input",
+                onValueChange = onUpdateCustomFileName
+            )
+
+            ExtractInputRow(
+                label = "歌手 / 作家",
+                value = uiState.customArtist,
+                placeholder = "填写歌手、主播或作者名（写入媒体库标签）",
+                icon = Icons.Rounded.Person,
+                suffixText = null,
+                testTag = "extract_custom_artist_input",
+                onValueChange = onUpdateCustomArtist
+            )
+
+            ExtractInputRow(
+                label = "曲目标题",
+                value = uiState.customTitle,
+                placeholder = "填写曲目或章节标题（留空沿用文件名）",
+                icon = Icons.Rounded.MusicNote,
+                suffixText = null,
+                testTag = "extract_custom_title_input",
+                onValueChange = onUpdateCustomTitle
+            )
+        }
+    }
+}
+
+@Composable
+private fun ExtractInputRow(
+    label: String,
+    value: String,
+    placeholder: String,
+    icon: ImageVector,
+    suffixText: String?,
+    testTag: String,
+    onValueChange: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = label,
+            style = StudioTextStyles.LabelSm,
+            color = ObsidianOnSurfaceVariant
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(ObsidianSurfaceContainerLowest)
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = ObsidianSecondary.copy(alpha = 0.8f),
+                modifier = Modifier.size(16.dp)
+            )
+            Box(modifier = Modifier.weight(1f)) {
+                if (value.isEmpty()) {
+                    Text(
+                        text = placeholder,
+                        style = StudioTextStyles.BodyMd,
+                        color = ObsidianOutline.copy(alpha = 0.65f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                BasicTextField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    singleLine = true,
+                    cursorBrush = SolidColor(ObsidianPrimary),
+                    textStyle = StudioTextStyles.BodyMd.copy(
+                        color = ObsidianOnSurface,
+                        fontWeight = FontWeight.Medium
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag(testTag)
+                )
+            }
+            if (value.isNotEmpty()) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = "清空$label",
+                    tint = ObsidianOnSurfaceVariant,
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clip(CircleShape)
+                        .clickable { onValueChange("") }
+                        .padding(2.dp)
+                )
+            }
+            if (suffixText != null) {
+                Text(
+                    text = suffixText,
+                    style = StudioTextStyles.LabelSm.copy(fontWeight = FontWeight.SemiBold),
+                    color = ObsidianPrimary
+                )
             }
         }
     }

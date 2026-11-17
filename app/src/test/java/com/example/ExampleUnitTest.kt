@@ -34,12 +34,16 @@ class ExampleUnitTest {
     val extract = ExtractUiState()
     assertFalse(extract.hasMedia)
     assertEquals("", extract.fileName)
+    assertEquals("", extract.customFileName)
+    assertEquals("", extract.customArtist)
+    assertEquals("", extract.customTitle)
     assertTrue(extract.detectedTracks.isEmpty())
     assertEquals("0.0", extract.estimatedSizeMb)
 
     val audio = AudioEditorUiState()
     assertFalse(audio.hasMedia)
     assertEquals("", audio.sourceFileName)
+    assertEquals("", audio.customOutputFileName)
     assertTrue(audio.waveformBars.isEmpty())
     assertEquals("", audio.tagTitle)
 
@@ -48,5 +52,14 @@ class ExampleUnitTest {
     assertEquals("", video.fileName)
     assertTrue(video.filmstripBitmaps.isEmpty())
     assertEquals(0f, video.estimatedSizeMb, 0.001f)
+  }
+
+  @Test
+  fun mediaEngine_sanitizeFileName_cleansInvalidCharsAndHandlesBlank() {
+    assertEquals("fallback_name", MediaEngine.sanitizeFileName("   ", "fallback_name"))
+    assertEquals("fallback_name", MediaEngine.sanitizeFileName("...", "fallback_name"))
+    assertEquals("My_Track_01", MediaEngine.sanitizeFileName("  My/Track:01  ", "fallback_name"))
+    assertEquals("夜曲_周杰伦_", MediaEngine.sanitizeFileName("夜曲*周杰伦?", "fallback_name"))
+    assertEquals("夜曲_周杰伦", MediaEngine.sanitizeFileName("夜曲/周杰伦", "fallback_name"))
   }
 }

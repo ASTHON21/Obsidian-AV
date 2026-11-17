@@ -127,6 +127,7 @@ fun AudioScreen(
     onUpdateId3: (title: String?, artist: String?, album: String?, genre: String?, year: String?, track: String?) -> Unit,
     onSelectOutputFormat: (ExportAudioFormat) -> Unit,
     onSelectOutputBitrate: (Int) -> Unit,
+    onUpdateCustomOutputFileName: (String) -> Unit,
     onExportMaster: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -187,7 +188,8 @@ fun AudioScreen(
                 AudioOutputSettingsCard(
                     uiState = uiState,
                     onSelectOutputFormat = onSelectOutputFormat,
-                    onSelectOutputBitrate = onSelectOutputBitrate
+                    onSelectOutputBitrate = onSelectOutputBitrate,
+                    onUpdateCustomOutputFileName = onUpdateCustomOutputFileName
                 )
             }
 
@@ -1058,7 +1060,8 @@ private fun Id3FieldBox(
 private fun AudioOutputSettingsCard(
     uiState: AudioEditorUiState,
     onSelectOutputFormat: (ExportAudioFormat) -> Unit,
-    onSelectOutputBitrate: (Int) -> Unit
+    onSelectOutputBitrate: (Int) -> Unit,
+    onUpdateCustomOutputFileName: (String) -> Unit
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -1080,10 +1083,19 @@ private fun AudioOutputSettingsCard(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(Icons.Rounded.Tune, contentDescription = null, tint = ObsidianSecondary, modifier = Modifier.size(20.dp))
-                    Text("音频导出格式", style = StudioTextStyles.HeadlineSm, color = ObsidianOnSurface)
+                    Text("音频导出格式与命名", style = StudioTextStyles.HeadlineSm, color = ObsidianOnSurface)
                 }
-                Text("MediaCodec", style = StudioTextStyles.LabelSm, color = ObsidianOnSurfaceVariant)
+                Text(".${uiState.outputFormat.extension}", style = StudioTextStyles.LabelSm, color = ObsidianPrimary)
             }
+
+            Id3FieldBox(
+                label = "输出文件名 (FILENAME)",
+                value = uiState.customOutputFileName,
+                placeholder = "留空则按原音频名生成",
+                icon = Icons.Rounded.Edit,
+                onValueChange = onUpdateCustomOutputFileName,
+                modifier = Modifier.testTag("audio_custom_filename_input")
+            )
 
             Row(
                 modifier = Modifier

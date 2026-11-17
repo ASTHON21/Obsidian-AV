@@ -9,6 +9,7 @@
     <string name="nav_video">视频剪辑</string>
     <string name="cd_logo">Precision AV Logo</string>
     <string name="cd_settings">引擎全局设置</string>
+    <string name="cd_back">返回上一页</string>
     <string name="cd_play_pause">播放或暂停</string>
     <string name="cd_prev_frame">后退一帧</string>
     <string name="cd_next_frame">前进一帧</string>

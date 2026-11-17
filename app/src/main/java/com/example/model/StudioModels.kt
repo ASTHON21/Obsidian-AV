@@ -61,7 +61,12 @@ data class ExtractUiState(
     val fadeOutSeconds: Float = 0.0f,
     val extractStatus: ExtractStatus = ExtractStatus.IDLE,
     val extractProgress: Float = 0f,
-    val lastExportedFile: File? = null
+    val customFileName: String = "",
+    val customArtist: String = "",
+    val customTitle: String = "",
+    val lastExportedFile: File? = null,
+    val lastExportedArtist: String = "",
+    val lastExportedTitle: String = ""
 ) {
     val hasMedia: Boolean get() = pickedUri != null
 
@@ -105,6 +110,7 @@ data class AudioEditorUiState(
     val tagGenre: String = "",
     val tagYear: String = "",
     val tagTrack: String = "",
+    val customOutputFileName: String = "",
     val outputFormat: ExportAudioFormat = ExportAudioFormat.M4A,
     val outputBitrateKbps: Int = 320,
     val exportStatus: AudioExportStatus = AudioExportStatus.IDLE,

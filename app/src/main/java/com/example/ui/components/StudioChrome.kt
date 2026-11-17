@@ -9,17 +9,13 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -27,6 +23,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.MovieCreation
@@ -36,9 +33,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.NavigationRail
-import androidx.compose.material3.NavigationRailItem
-import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,8 +43,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -115,6 +107,8 @@ fun PulsingDot(
 @Composable
 fun StudioTopBar(
     currentRoute: String,
+    canNavigateBack: Boolean,
+    onBackClick: () -> Unit,
     onSettingsClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -130,7 +124,7 @@ fun StudioTopBar(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp)
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = if (canNavigateBack) 8.dp else 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -139,61 +133,101 @@ fun StudioTopBar(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Image(
-                        painter = painterResource(R.drawable.ic_launcher_art),
-                        contentDescription = stringResource(R.string.cd_logo),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                    )
-                    Column(verticalArrangement = Arrangement.Center) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    if (canNavigateBack) {
+                        IconButton(
+                            onClick = onBackClick,
+                            modifier = Modifier
+                                .minimumInteractiveComponentSize()
+                                .testTag("top_back_button")
                         ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(R.string.cd_back),
+                                tint = ObsidianOnSurface,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+
+                        Column(verticalArrangement = Arrangement.Center) {
                             Text(
-                                text = stringResource(R.string.brand_title),
+                                text = activeTab.label,
                                 style = StudioTextStyles.HeadlineSm.copy(
                                     fontWeight = FontWeight.Bold,
-                                    letterSpacing = (-0.3).sp
+                                    letterSpacing = (-0.2).sp
                                 ),
                                 color = ObsidianOnSurface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(ObsidianSurfaceContainerLowest)
-                                    .border(
-                                        width = 1.dp,
-                                        color = ObsidianPrimary.copy(alpha = 0.22f),
-                                        shape = RoundedCornerShape(4.dp)
-                                    )
-                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
                             ) {
+                                PulsingDot(color = ObsidianPrimary)
                                 Text(
-                                    text = "LOSSLESS",
-                                    style = StudioTextStyles.LabelSm.copy(
-                                        fontSize = 9.sp,
-                                        letterSpacing = 0.5.sp
-                                    ),
-                                    color = ObsidianPrimary,
-                                    maxLines = 1
+                                    text = "${activeTab.subtitleEn} · 本地处理",
+                                    style = StudioTextStyles.LabelSm,
+                                    color = ObsidianOnSurfaceVariant
                                 )
                             }
                         }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            PulsingDot(color = ObsidianPrimary)
-                            Text(
-                                text = activeTab.subtitleEn,
-                                style = StudioTextStyles.LabelSm,
-                                color = ObsidianOnSurfaceVariant
-                            )
+                    } else {
+                        Image(
+                            painter = painterResource(R.drawable.ic_launcher_art),
+                            contentDescription = stringResource(R.string.cd_logo),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                        )
+                        Column(verticalArrangement = Arrangement.Center) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.brand_title),
+                                    style = StudioTextStyles.HeadlineSm.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = (-0.3).sp
+                                    ),
+                                    color = ObsidianOnSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(ObsidianSurfaceContainerLowest)
+                                        .border(
+                                            width = 1.dp,
+                                            color = ObsidianPrimary.copy(alpha = 0.22f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "LOSSLESS",
+                                        style = StudioTextStyles.LabelSm.copy(
+                                            fontSize = 9.sp,
+                                            letterSpacing = 0.5.sp
+                                        ),
+                                        color = ObsidianPrimary,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                PulsingDot(color = ObsidianPrimary)
+                                Text(
+                                    text = "工作台 · ${activeTab.subtitleEn}",
+                                    style = StudioTextStyles.LabelSm,
+                                    color = ObsidianOnSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -213,120 +247,6 @@ fun StudioTopBar(
                 }
             }
             HorizontalDivider(color = ObsidianOutlineVariant.copy(alpha = 0.3f), thickness = 0.5.dp)
-        }
-    }
-}
-
-@Composable
-fun StudioBottomNavBar(
-    currentRoute: String,
-    onNavigate: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = ObsidianSurface.copy(alpha = 0.95f),
-        shadowElevation = 12.dp
-    ) {
-        Column(modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)) {
-            HorizontalDivider(color = ObsidianOutlineVariant.copy(alpha = 0.3f), thickness = 0.5.dp)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                StudioNavTabs.forEach { tab ->
-                    val selected = tab.route == currentRoute
-                    val itemColor = if (selected) ObsidianPrimary else ObsidianOnSurfaceVariant
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(10.dp))
-                            .clickable { onNavigate(tab.route) }
-                            .drawBehind {
-                                if (selected) {
-                                    drawCircle(
-                                        brush = Brush.radialGradient(
-                                            colors = listOf(
-                                                ObsidianPrimary.copy(alpha = 0.18f),
-                                                Color.Transparent
-                                            )
-                                        ),
-                                        radius = size.minDimension * 0.65f
-                                    )
-                                }
-                            }
-                            .testTag("nav_${tab.route}"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Icon(
-                                imageVector = tab.icon,
-                                contentDescription = tab.label,
-                                tint = itemColor,
-                                modifier = Modifier.size(22.dp)
-                            )
-                            Text(
-                                text = tab.label,
-                                style = StudioTextStyles.LabelSm.copy(
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
-                                ),
-                                color = itemColor,
-                                maxLines = 1
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun StudioNavigationRail(
-    currentRoute: String,
-    onNavigate: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    NavigationRail(
-        modifier = modifier.windowInsetsPadding(WindowInsets.navigationBars),
-        containerColor = ObsidianSurfaceContainerLowest,
-        contentColor = ObsidianOnSurfaceVariant
-    ) {
-        Spacer(Modifier.height(12.dp))
-        StudioNavTabs.forEach { tab ->
-            val selected = tab.route == currentRoute
-            NavigationRailItem(
-                selected = selected,
-                onClick = { onNavigate(tab.route) },
-                icon = {
-                    Icon(
-                        imageVector = tab.icon,
-                        contentDescription = tab.label,
-                        modifier = Modifier.size(22.dp)
-                    )
-                },
-                label = {
-                    Text(
-                        text = tab.label,
-                        style = StudioTextStyles.LabelSm
-                    )
-                },
-                colors = NavigationRailItemDefaults.colors(
-                    selectedIconColor = ObsidianPrimary,
-                    selectedTextColor = ObsidianPrimary,
-                    indicatorColor = ObsidianPrimary.copy(alpha = 0.14f),
-                    unselectedIconColor = ObsidianOnSurfaceVariant,
-                    unselectedTextColor = ObsidianOnSurfaceVariant
-                )
-            )
         }
     }
 }

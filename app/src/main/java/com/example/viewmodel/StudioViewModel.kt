@@ -230,22 +230,42 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
+    fun pauseAllPreviews() {
+        stopExtractPlayer()
+        stopAudioPlayer()
+        _extractState.update { it.copy(isPlayingPreview = false) }
+        _audioState.update { it.copy(isPlaying = false) }
+        _videoState.update { it.copy(isPlaying = false) }
+    }
+
     // --- Media Loading ---
 
-    fun loadPickedMedia(uri: Uri, preferredRoute: String? = null) {
+    fun loadPickedMedia(
+        uri: Uri,
+        preferredRoute: String? = null,
+        onReadyToNavigate: ((String) -> Unit)? = null
+    ) {
         viewModelScope.launch {
             val result = MediaEngine.inspectMedia(appContext, uri)
             if (!result.isVideo || preferredRoute == "audio") {
-                loadAudioInspection(result)
+                loadAudioInspection(result, onReadyToNavigate = {
+                    onReadyToNavigate?.invoke("audio")
+                })
                 notifyMessage("已载入音频：${result.displayName}")
             } else {
-                loadVideoIntoExtractAndEditor(result)
+                val targetRoute = preferredRoute ?: "extract"
+                loadVideoIntoExtractAndEditor(result, onReadyToNavigate = {
+                    onReadyToNavigate?.invoke(targetRoute)
+                })
                 notifyMessage("已载入视频：${result.displayName}")
             }
         }
     }
 
-    private suspend fun loadVideoIntoExtractAndEditor(info: com.example.media.MediaInspectionResult) {
+    private suspend fun loadVideoIntoExtractAndEditor(
+        info: com.example.media.MediaInspectionResult,
+        onReadyToNavigate: (() -> Unit)? = null
+    ) {
         stopExtractPlayer()
         val firstThumb = MediaEngine.extractFrameAtTime(appContext, info.uri, info.durationMs / 4L)
         val firstTrack = info.audioTracks.firstOrNull()
@@ -258,8 +278,13 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         } else {
             "VBR"
         }
+        val baseName = info.displayName.substringBeforeLast('.').ifBlank { "extracted_audio" }
 
-        _extractState.update {
+        _extractState.update { prev ->
+            val preservePreTyped = prev.pickedUri == null
+            val resolvedFileName = if (preservePreTyped && prev.customFileName.isNotBlank()) prev.customFileName else baseName
+            val resolvedArtist = if (preservePreTyped && prev.customArtist.isNotBlank()) prev.customArtist else info.artist
+            val resolvedTitle = if (preservePreTyped && prev.customTitle.isNotBlank()) prev.customTitle else info.title.ifBlank { baseName }
             ExtractUiState(
                 pickedUri = info.uri,
                 fileName = info.displayName,
@@ -272,7 +297,10 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
                 sourceBitrateLabel = brLabel,
                 thumbnailBitmap = firstThumb,
                 detectedTracks = info.audioTracks,
-                selectedTrackIndex = firstTrack?.trackIndex
+                selectedTrackIndex = firstTrack?.trackIndex,
+                customFileName = resolvedFileName,
+                customArtist = resolvedArtist,
+                customTitle = resolvedTitle
             )
         }
 
@@ -294,6 +322,8 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
             )
         }
 
+        onReadyToNavigate?.invoke()
+
         val strip = MediaEngine.extractFilmstripThumbnails(appContext, info.uri, info.durationMs, count = 8)
         _videoState.update {
             it.copy(
@@ -303,7 +333,12 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    private suspend fun loadAudioInspection(info: com.example.media.MediaInspectionResult) {
+    private suspend fun loadAudioInspection(
+        info: com.example.media.MediaInspectionResult,
+        overrideTitle: String? = null,
+        overrideArtist: String? = null,
+        onReadyToNavigate: (() -> Unit)? = null
+    ) {
         stopAudioPlayer()
         val track = info.audioTracks.firstOrNull()
         val spec = if (track != null) {
@@ -313,6 +348,9 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         } else {
             info.sizeLabel
         }
+        val baseName = info.displayName.substringBeforeLast('.').ifBlank { "audio_master" }
+        val resolvedTitle = overrideTitle?.takeIf { it.isNotBlank() } ?: info.title.ifBlank { baseName }
+        val resolvedArtist = overrideArtist?.takeIf { it.isNotBlank() } ?: info.artist
 
         _audioState.update {
             AudioEditorUiState(
@@ -326,15 +364,18 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
                 waveformBars = emptyList(),
                 isLoadingWaveform = true,
                 embeddedAlbumArt = info.embeddedArtwork,
-                tagTitle = info.title,
-                tagArtist = info.artist,
+                tagTitle = resolvedTitle,
+                tagArtist = resolvedArtist,
                 tagAlbum = info.album,
                 tagGenre = info.genre,
                 tagYear = info.year,
                 tagTrack = info.trackNumber,
+                customOutputFileName = baseName,
                 statusNote = "已就绪：${info.displayName} (${info.sizeLabel})"
             )
         }
+
+        onReadyToNavigate?.invoke()
 
         val bars = MediaEngine.extractAudioWaveform(appContext, info.uri, info.durationMs)
         _audioState.update {
@@ -437,6 +478,18 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         _extractState.update { it.copy(fadeOutSeconds = (it.fadeOutSeconds + delta).coerceIn(0f, 5f)) }
     }
 
+    fun updateExtractCustomFileName(value: String) {
+        _extractState.update { it.copy(customFileName = value) }
+    }
+
+    fun updateExtractCustomArtist(value: String) {
+        _extractState.update { it.copy(customArtist = value) }
+    }
+
+    fun updateExtractCustomTitle(value: String) {
+        _extractState.update { it.copy(customTitle = value) }
+    }
+
     fun runExtraction() {
         val st = _extractState.value
         val uri = st.pickedUri ?: run {
@@ -448,11 +501,16 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _extractState.update { it.copy(extractStatus = ExtractStatus.PROCESSING, extractProgress = 0f) }
             try {
-                val baseName = st.fileName.substringBeforeLast('.').ifBlank { "extracted_audio" }
-                val outFile = File(
-                    MediaEngine.getExportsDir(appContext),
-                    "${baseName}_${System.currentTimeMillis()}.${st.selectedFormat.extension}"
+                val fallbackBase = st.fileName.substringBeforeLast('.').ifBlank { "extracted_audio" }
+                val cleanBase = MediaEngine.sanitizeFileName(st.customFileName, fallbackBase)
+                val outFile = MediaEngine.uniqueOutputFile(
+                    dir = MediaEngine.getExportsDir(appContext),
+                    baseName = cleanBase,
+                    extension = st.selectedFormat.extension
                 )
+                val resolvedTitle = st.customTitle.trim().ifBlank { cleanBase }
+                val resolvedArtist = st.customArtist.trim()
+
                 val forceDsp = st.extractMethod == ExtractMethod.ACCURATE_RESAMPLE ||
                     st.fadeInSeconds > 0f || st.fadeOutSeconds > 0f
                 val fadeIn = if (forceDsp) st.fadeInSeconds else 0f
@@ -476,14 +534,18 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
                     context = appContext,
                     sourceFile = outFile,
                     isVideo = false,
-                    mimeType = st.selectedFormat.mimeType
+                    mimeType = st.selectedFormat.mimeType,
+                    mediaTitle = resolvedTitle,
+                    mediaArtist = resolvedArtist
                 )
                 refreshStorageAndQueue()
                 _extractState.update {
                     it.copy(
                         extractStatus = ExtractStatus.COMPLETED,
                         extractProgress = 1f,
-                        lastExportedFile = outFile
+                        lastExportedFile = outFile,
+                        lastExportedArtist = resolvedArtist,
+                        lastExportedTitle = resolvedTitle
                     )
                 }
                 notifyMessage("提取完成：${outFile.name} 已保存到 Music/ObsidianAV")
@@ -497,8 +559,16 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openLastExtractedInAudioEditor() {
-        val file = _extractState.value.lastExportedFile ?: return
-        loadPickedMedia(Uri.fromFile(file), preferredRoute = "audio")
+        val st = _extractState.value
+        val file = st.lastExportedFile ?: return
+        viewModelScope.launch {
+            val info = MediaEngine.inspectMedia(appContext, Uri.fromFile(file))
+            loadAudioInspection(
+                info = info,
+                overrideTitle = st.lastExportedTitle.ifBlank { st.customTitle },
+                overrideArtist = st.lastExportedArtist.ifBlank { st.customArtist }
+            )
+        }
     }
 
     // --- Audio Editor Actions ---
@@ -695,6 +765,10 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         _audioState.update { it.copy(outputBitrateKbps = kbps) }
     }
 
+    fun updateAudioCustomOutputFileName(name: String) {
+        _audioState.update { it.copy(customOutputFileName = name) }
+    }
+
     fun exportAudioMaster() {
         val st = _audioState.value
         val uri = st.pickedUri ?: run {
@@ -706,11 +780,13 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             _audioState.update { it.copy(exportStatus = AudioExportStatus.PROCESSING, exportProgress = 0f) }
             try {
-                val safeTitle = st.tagTitle.ifBlank { st.sourceFileName.substringBeforeLast('.') }
-                    .replace(Regex("[^a-zA-Z0-9_\\-\\u4e00-\\u9fa5]"), "_")
-                val outFile = File(
-                    MediaEngine.getExportsDir(appContext),
-                    "${safeTitle}_master_${System.currentTimeMillis()}.${st.outputFormat.extension}"
+                val fallbackName = st.tagTitle.ifBlank { st.sourceFileName.substringBeforeLast('.') }
+                    .ifBlank { "audio_master" }
+                val rawOutName = st.customOutputFileName.ifBlank { fallbackName }
+                val outFile = MediaEngine.uniqueOutputFile(
+                    dir = MediaEngine.getExportsDir(appContext),
+                    baseName = rawOutName,
+                    extension = st.outputFormat.extension
                 )
                 MediaEngine.exportAudioStream(
                     context = appContext,
@@ -731,7 +807,10 @@ class StudioViewModel(application: Application) : AndroidViewModel(application) 
                     context = appContext,
                     sourceFile = outFile,
                     isVideo = false,
-                    mimeType = st.outputFormat.mimeType
+                    mimeType = st.outputFormat.mimeType,
+                    mediaTitle = st.tagTitle.ifBlank { outFile.nameWithoutExtension },
+                    mediaArtist = st.tagArtist,
+                    mediaAlbum = st.tagAlbum
                 )
                 refreshStorageAndQueue()
                 _audioState.update {

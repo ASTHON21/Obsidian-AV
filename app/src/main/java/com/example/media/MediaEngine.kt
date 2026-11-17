@@ -872,7 +872,10 @@ object MediaEngine {
         context: Context,
         sourceFile: File,
         isVideo: Boolean,
-        mimeType: String
+        mimeType: String,
+        mediaTitle: String? = null,
+        mediaArtist: String? = null,
+        mediaAlbum: String? = null
     ): Uri? = withContext(Dispatchers.IO) {
         try {
             val resolver = context.contentResolver
@@ -893,6 +896,17 @@ object MediaEngine {
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.DISPLAY_NAME, sourceFile.name)
                 put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+                if (!mediaTitle.isNullOrBlank()) {
+                    put(MediaStore.MediaColumns.TITLE, mediaTitle.trim())
+                }
+                if (!isVideo) {
+                    if (!mediaArtist.isNullOrBlank()) {
+                        put(MediaStore.Audio.AudioColumns.ARTIST, mediaArtist.trim())
+                    }
+                    if (!mediaAlbum.isNullOrBlank()) {
+                        put(MediaStore.Audio.AudioColumns.ALBUM, mediaAlbum.trim())
+                    }
+                }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     val relDir = if (isVideo) "${Environment.DIRECTORY_MOVIES}/ObsidianAV" else "${Environment.DIRECTORY_MUSIC}/ObsidianAV"
                     put(MediaStore.MediaColumns.RELATIVE_PATH, relDir)
@@ -914,6 +928,24 @@ object MediaEngine {
         } catch (_: Exception) {
             null
         }
+    }
+
+    fun sanitizeFileName(rawName: String, fallback: String): String {
+        val trimmed = rawName.trim()
+            .replace(Regex("[\\\\/:*?\"<>|\\r\\n]"), "_")
+            .trim('.')
+        return if (trimmed.isNotBlank()) trimmed else fallback
+    }
+
+    fun uniqueOutputFile(dir: File, baseName: String, extension: String): File {
+        val safeBase = sanitizeFileName(baseName, "obsidian_export")
+        var candidate = File(dir, "$safeBase.$extension")
+        var counter = 2
+        while (candidate.exists()) {
+            candidate = File(dir, "${safeBase}_$counter.$extension")
+            counter++
+        }
+        return candidate
     }
 
     fun formatSize(bytes: Long): String {
