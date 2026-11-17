@@ -16,8 +16,9 @@ android {
     applicationId = "com.aistudio.obsidianav.k7mxpq"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    val ciBuildNumber = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull()
+    versionCode = ciBuildNumber ?: 1
+    versionName = if (ciBuildNumber != null) "1.0.$ciBuildNumber" else "1.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
